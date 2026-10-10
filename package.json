@@ -1,0 +1,33 @@
+{
+  "name": "pulldown-cmark-wasm",
+  "version": "0.1.0",
+  "description": "pulldown-cmark compiled to WebAssembly, returning a flat event table with UTF-16 source ranges",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yuche/pulldown-cmark-wasm.git"
+  },
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    },
+    "./pulldown_cmark_wasm.wasm": "./dist/pulldown_cmark_wasm.wasm"
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "dist/pulldown_cmark_wasm.wasm",
+    "LICENSE",
+    "THIRD_PARTY_LICENSES"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "sh build.sh",
+    "test": "cargo test && node --test test/*.test.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
