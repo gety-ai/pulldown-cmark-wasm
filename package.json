@@ -1,6 +1,6 @@
 {
   "name": "pulldown-cmark-wasm",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "pulldown-cmark compiled to WebAssembly, returning a flat event table with UTF-16 source ranges",
   "license": "MIT",
   "type": "module",

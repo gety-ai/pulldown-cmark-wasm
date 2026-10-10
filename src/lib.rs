@@ -59,9 +59,14 @@ pub mod tag {
 /// Checkpoint spacing of the UTF-8 -> UTF-16 offset index, as a shift.
 const CHECKPOINT_SHIFT: usize = 6;
 
+/// Checkpoint flag: the 64-byte chunk is pure ASCII, so offsets inside it map
+/// 1:1 and `get` needs no scan. Inputs stay far below 2^31 UTF-16 units.
+const ASCII_CHUNK: u32 = 1 << 31;
+
 /// UTF-8 byte offset -> UTF-16 offset, via a checkpoint every 64 bytes.
 struct Utf16Index<'a> {
     bytes: &'a [u8],
+    /// UTF-16 offset of each chunk start, tagged with `ASCII_CHUNK`.
     checkpoints: Vec<u32>,
 }
 
@@ -71,8 +76,13 @@ impl<'a> Utf16Index<'a> {
         let mut checkpoints = Vec::with_capacity((bytes.len() >> CHECKPOINT_SHIFT) + 1);
         let mut units = 0u32;
         for chunk in bytes.chunks(1 << CHECKPOINT_SHIFT) {
-            checkpoints.push(units);
-            units += chunk.iter().map(|&b| utf16_units(b)).sum::<u32>();
+            if chunk.is_ascii() {
+                checkpoints.push(units | ASCII_CHUNK);
+                units += chunk.len() as u32;
+            } else {
+                checkpoints.push(units);
+                units += chunk.iter().map(|&b| utf16_units(b)).sum::<u32>();
+            }
         }
         checkpoints.push(units);
         Self { bytes, checkpoints }
@@ -81,8 +91,13 @@ impl<'a> Utf16Index<'a> {
     /// `byte` must be a char boundary.
     fn get(&self, byte: usize) -> u32 {
         let block = byte >> CHECKPOINT_SHIFT;
-        let tail = &self.bytes[block << CHECKPOINT_SHIFT..byte];
-        self.checkpoints[block] + tail.iter().map(|&b| utf16_units(b)).sum::<u32>()
+        let block_start = block << CHECKPOINT_SHIFT;
+        let checkpoint = self.checkpoints[block];
+        if checkpoint & ASCII_CHUNK != 0 {
+            return (checkpoint & !ASCII_CHUNK) + (byte - block_start) as u32;
+        }
+        let tail = &self.bytes[block_start..byte];
+        checkpoint + tail.iter().map(|&b| utf16_units(b)).sum::<u32>()
     }
 }
 
@@ -358,9 +373,12 @@ mod tests {
 
     #[test]
     fn utf16_index_matches_encode_utf16_at_every_boundary() {
-        // Mixed 1/2/3/4-byte chars, long enough to span many checkpoints.
-        let src = "a中😀é\n".repeat(40);
+        // Mixed 1/2/3/4-byte chars between ASCII runs, so checkpoints cover
+        // both pure-ASCII chunks and chunks that need scanning.
+        let src = ["x".repeat(130), "a中😀é\n".repeat(12), "y".repeat(64)].concat().repeat(8);
         let index = Utf16Index::new(&src);
+        let ascii = index.checkpoints.iter().filter(|&&c| c & ASCII_CHUNK != 0).count();
+        assert!(ascii > 0 && ascii < index.checkpoints.len() - 1);
         for (byte, _) in src.char_indices().chain([(src.len(), ' ')]) {
             assert_eq!(index.get(byte) as usize, src[..byte].encode_utf16().count(), "byte {byte}");
         }

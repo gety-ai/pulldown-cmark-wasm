@@ -32,7 +32,7 @@ source = "git+https://github.com/pulldown-cmark/pulldown-cmark?rev=953e44a#953e4
 
 [[package]]
 name = "pulldown-cmark-wasm"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "pulldown-cmark",
 ]
