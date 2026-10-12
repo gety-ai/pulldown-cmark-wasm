@@ -6,7 +6,7 @@
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yuche/pulldown-cmark-wasm.git"
+    "url": "git+https://github.com/gety-ai/pulldown-cmark-wasm.git"
   },
   "exports": {
     ".": {
